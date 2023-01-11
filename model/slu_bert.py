@@ -7,7 +7,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.utils.rnn as rnn_utils
 from torch.autograd import Variable
-from TorchCRF import CRF
 from transformers import (BertConfig, BertForMaskedLM,
                           BertForNextSentencePrediction, BertModel,
                           BertPreTrainedModel, BertTokenizer)
