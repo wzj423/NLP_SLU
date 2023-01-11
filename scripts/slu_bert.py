@@ -75,7 +75,7 @@ def decode(choice):
     gc.collect()
     return metrics, total_loss / count
 
-
+args.testing=True
 if not args.testing:
     num_training_steps = ((len(train_dataset) + args.batch_size - 1) // args.batch_size) * args.max_epoch
     print('Total training steps: %d' % (num_training_steps))

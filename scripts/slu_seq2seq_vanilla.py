@@ -75,7 +75,7 @@ def decode(choice):
     return metrics, total_loss / count
 
 from tqdm import tqdm
-
+args.testing=True
 if not args.testing:
     num_training_steps = ((len(train_dataset) + args.batch_size - 1) // args.batch_size) * args.max_epoch
     print('Total training steps: %d' % (num_training_steps))
@@ -116,6 +116,8 @@ if not args.testing:
 
     print('FINAL BEST RESULT: \tEpoch: %d\tDev loss: %.4f\tDev acc: %.4f\tDev fscore(p/r/f): (%.4f/%.4f/%.4f)' % (best_result['iter'], best_result['dev_loss'], best_result['dev_acc'], best_result['dev_f1']['precision'], best_result['dev_f1']['recall'], best_result['dev_f1']['fscore']))
 else:
+    model_para_path = 'model_seq2seq_vanilla.bin'
+    model.load_state_dict(torch.load(model_para_path)['model'])
     start_time = time.time()
     metrics, dev_loss = decode('dev')
     dev_acc, dev_fscore = metrics['acc'], metrics['fscore']

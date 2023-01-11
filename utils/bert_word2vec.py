@@ -61,10 +61,3 @@ class BertUtils():
         model_config.output_attentions = True
         # 通过配置和路径导入模型
         self.bert_model = BertModel.from_pretrained(model_name)#(MODEL_PATH, config = model_config)
-
-        # inputs = tokenizer.encode_plus('大', padding="max_length", truncation=True, max_length=10,
-        #                             add_special_tokens=True,
-        #                             return_tensors="pt")
-        # out = bert_model(**inputs)
-        # out = out[0][0][0].detach().numpy().tolist()
-        # print(out)
