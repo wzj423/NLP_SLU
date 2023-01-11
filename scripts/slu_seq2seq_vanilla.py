@@ -14,7 +14,7 @@ from utils.initialization import *
 from utils.example import Example
 from utils.batch import from_example_list
 from utils.vocab import PAD
-from model.slu_baseline_tagging import SLUTagging
+from model.slu_seq2seq_vanilla import Seq2Seq
 
 # initialization params, output path, logger, random seed and torch.device
 args = init_args(sys.argv[1:])
@@ -28,8 +28,8 @@ start_time = time.time()
 train_path = os.path.join(args.dataroot, 'train.json')      #训练集
 dev_path = os.path.join(args.dataroot, 'development.json')  #开发集
 Example.configuration(args.dataroot, train_path=train_path, word2vec_path=args.word2vec_path)   #配置
-train_dataset = Example.load_dataset(train_path)
-dev_dataset = Example.load_dataset(dev_path)
+train_dataset = Example.load_dataset(train_path,BOS_and_EOS=True)
+dev_dataset = Example.load_dataset(dev_path,BOS_and_EOS=True)
 print("Load dataset and database finished, cost %.4fs ..." % (time.time() - start_time))
 print("Dataset size: train -> %d ; dev -> %d" % (len(train_dataset), len(dev_dataset)))
 
@@ -38,8 +38,9 @@ args.pad_idx = Example.word_vocab[PAD]
 args.num_tags = Example.label_vocab.num_tags
 args.tag_pad_idx = Example.label_vocab.convert_tag_to_idx(PAD)
 
+args.batch_size=1
 
-model = SLUTagging(args).to(device)     #模型
+model = Seq2Seq(args).to(device)     #模型
 Example.word2vec.load_embeddings(model.word_embed, Example.word_vocab, device=device)
 
 
@@ -57,7 +58,7 @@ def decode(choice):
     predictions, labels = [], []
     total_loss, count = 0, 0
     with torch.no_grad():
-        for i in range(0, len(dataset), args.batch_size):
+        for i in tqdm(range(0, len(dataset), args.batch_size)):
             cur_dataset = dataset[i: i + args.batch_size]
             current_batch = from_example_list(args, cur_dataset, device, train=True)
             pred, label, loss = model.decode(Example.label_vocab, current_batch)
@@ -73,6 +74,7 @@ def decode(choice):
     gc.collect()
     return metrics, total_loss / count
 
+from tqdm import tqdm
 
 if not args.testing:
     num_training_steps = ((len(train_dataset) + args.batch_size - 1) // args.batch_size) * args.max_epoch
@@ -87,7 +89,7 @@ if not args.testing:
         np.random.shuffle(train_index)
         model.train()
         count = 0
-        for j in range(0, nsamples, step_size):
+        for j in tqdm(range(0, nsamples, step_size)):
             cur_dataset = [train_dataset[k] for k in train_index[j: j + step_size]]
             current_batch = from_example_list(args, cur_dataset, device, train=True)
             output, loss = model(current_batch)
@@ -109,7 +111,7 @@ if not args.testing:
             torch.save({
                 'epoch': i, 'model': model.state_dict(),
                 'optim': optimizer.state_dict(),
-            }, open('model_baseline.bin', 'wb'))
+            }, open('model_seq2seq_vanilla.bin', 'wb'))
             print('NEW BEST MODEL: \tEpoch: %d\tDev loss: %.4f\tDev acc: %.2f\tDev fscore(p/r/f): (%.2f/%.2f/%.2f)' % (i, dev_loss, dev_acc, dev_fscore['precision'], dev_fscore['recall'], dev_fscore['fscore']))
 
     print('FINAL BEST RESULT: \tEpoch: %d\tDev loss: %.4f\tDev acc: %.4f\tDev fscore(p/r/f): (%.4f/%.4f/%.4f)' % (best_result['iter'], best_result['dev_loss'], best_result['dev_acc'], best_result['dev_f1']['precision'], best_result['dev_f1']['recall'], best_result['dev_f1']['fscore']))

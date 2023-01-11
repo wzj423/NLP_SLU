@@ -16,7 +16,8 @@ from utils.example import Example
 from utils.batch import from_example_list
 from utils.vocab import PAD
 from model.slu_baseline_tagging import SLUTagging
-
+#from model.slu_seq2seq_vanilla_batch import Seq2Seq
+from model.slu_seq2seq_attention_batch import Seq2Seq
 # initialization params, output path, logger, random seed and torch.device
 args = init_args(sys.argv[1:])
 set_random_seed(args.seed)
@@ -42,7 +43,7 @@ test_dataset = Example.load_dataset(test_set_path)
 #     print('test_dataset.ex:', test_dataset[i].ex)
 #     print('test_dataset.pred:', test_dataset[i].pred)
 
-model = SLUTagging(args).to(device)
+model = Seq2Seq(args).to(device)
 model.load_state_dict(torch.load(model_para_path)['model'])
 Example.word2vec.load_embeddings(model.word_embed, Example.word_vocab, device=device)
 

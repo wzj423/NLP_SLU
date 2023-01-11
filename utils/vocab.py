@@ -9,7 +9,7 @@ EOS = '</s>'
 
 class Vocab():
 
-    def __init__(self, padding=False, unk=False, min_freq=1, filepath=None):
+    def __init__(self, padding=False, unk=False, BOS_and_EOS=False, min_freq=1, filepath=None):
         super(Vocab, self).__init__()
         self.word2id = dict()
         self.id2word = dict()
@@ -19,6 +19,12 @@ class Vocab():
         if unk:
             idx = len(self.word2id)
             self.word2id[UNK], self.id2word[idx] = idx, UNK
+        
+        if BOS_and_EOS:
+            idx = len(self.word2id)
+            self.word2id[BOS], self.id2word[idx] = idx, BOS
+            idx = len(self.word2id)
+            self.word2id[EOS], self.id2word[idx] = idx, EOS
 
         if filepath is not None:
             self.from_train(filepath, min_freq=min_freq)
@@ -50,13 +56,20 @@ class Vocab():
 
 class LabelVocab():
 
-    def __init__(self, root):
+    def __init__(self, root, BOS_and_EOS=False):
         self.tag2idx, self.idx2tag = {}, {}
 
         self.tag2idx[PAD] = 0
         self.idx2tag[0] = PAD
         self.tag2idx['O'] = 1
         self.idx2tag[1] = 'O'
+
+        if BOS_and_EOS:
+            idx = len(self.word2id)
+            self.tag2idx[BOS], self.idx2tag[idx] = idx, BOS
+            idx = len(self.word2id)
+            self.tag2idx[EOS], self.idx2tag[idx] = idx, EOS
+
         self.from_filepath(root)
 
     def from_filepath(self, root):

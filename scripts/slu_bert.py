@@ -5,7 +5,7 @@ import os
 import sys
 import time
 import gc
-
+from tqdm import tqdm
 install_path = os.path.abspath(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(install_path)
 
@@ -14,7 +14,7 @@ from utils.initialization import *
 from utils.example import Example
 from utils.batch import from_example_list
 from utils.vocab import PAD
-from model.slu_baseline_tagging import SLUTagging
+from model.slu_bert import JointBERT
 
 # initialization params, output path, logger, random seed and torch.device
 args = init_args(sys.argv[1:])
@@ -28,8 +28,8 @@ start_time = time.time()
 train_path = os.path.join(args.dataroot, 'train.json')      #训练集
 dev_path = os.path.join(args.dataroot, 'development.json')  #开发集
 Example.configuration(args.dataroot, train_path=train_path, word2vec_path=args.word2vec_path)   #配置
-train_dataset = Example.load_dataset(train_path)
-dev_dataset = Example.load_dataset(dev_path)
+train_dataset = Example.load_dataset(train_path,BOS_and_EOS=True)
+dev_dataset = Example.load_dataset(dev_path,BOS_and_EOS=True)
 print("Load dataset and database finished, cost %.4fs ..." % (time.time() - start_time))
 print("Dataset size: train -> %d ; dev -> %d" % (len(train_dataset), len(dev_dataset)))
 
@@ -38,9 +38,11 @@ args.pad_idx = Example.word_vocab[PAD]
 args.num_tags = Example.label_vocab.num_tags
 args.tag_pad_idx = Example.label_vocab.convert_tag_to_idx(PAD)
 
+args.batch_size=32
+args.lr=5e-5
 
-model = SLUTagging(args).to(device)     #模型
-Example.word2vec.load_embeddings(model.word_embed, Example.word_vocab, device=device)
+model = JointBERT(args).to(device)     #模型
+#Example.word2vec.load_embeddings(model.word_embed, Example.word_vocab, device=device)
 
 
 def set_optimizer(model, args):
@@ -87,14 +89,16 @@ if not args.testing:
         np.random.shuffle(train_index)
         model.train()
         count = 0
-        for j in range(0, nsamples, step_size):
+        for j in tqdm(range(0, nsamples//1, step_size)):
             cur_dataset = [train_dataset[k] for k in train_index[j: j + step_size]]
             current_batch = from_example_list(args, cur_dataset, device, train=True)
             output, loss = model(current_batch)
             epoch_loss += loss.item()
+            #print("{}".format(loss.item()))
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()
+            model.zero_grad()
             count += 1
         print('Training: \tEpoch: %d\tTime: %.4f\tTraining Loss: %.4f' % (i, time.time() - start_time, epoch_loss / count))
         torch.cuda.empty_cache()
@@ -109,11 +113,13 @@ if not args.testing:
             torch.save({
                 'epoch': i, 'model': model.state_dict(),
                 'optim': optimizer.state_dict(),
-            }, open('model_baseline.bin', 'wb'))
+            }, open('model_bert.bin', 'wb'))
             print('NEW BEST MODEL: \tEpoch: %d\tDev loss: %.4f\tDev acc: %.2f\tDev fscore(p/r/f): (%.2f/%.2f/%.2f)' % (i, dev_loss, dev_acc, dev_fscore['precision'], dev_fscore['recall'], dev_fscore['fscore']))
 
     print('FINAL BEST RESULT: \tEpoch: %d\tDev loss: %.4f\tDev acc: %.4f\tDev fscore(p/r/f): (%.4f/%.4f/%.4f)' % (best_result['iter'], best_result['dev_loss'], best_result['dev_acc'], best_result['dev_f1']['precision'], best_result['dev_f1']['recall'], best_result['dev_f1']['fscore']))
 else:
+    model_para_path = 'model_bert.bin'
+    model.load_state_dict(torch.load(model_para_path)['model'])
     start_time = time.time()
     metrics, dev_loss = decode('dev')
     dev_acc, dev_fscore = metrics['acc'], metrics['fscore']
