@@ -18,6 +18,7 @@ from utils.vocab import PAD
 from model.slu_baseline_tagging import SLUTagging
 #from model.slu_seq2seq_vanilla_batch import Seq2Seq
 from model.slu_seq2seq_attention_batch import Seq2Seq
+from model.slu_bert import JointBERT
 # initialization params, output path, logger, random seed and torch.device
 args = init_args(sys.argv[1:])
 set_random_seed(args.seed)
@@ -34,7 +35,7 @@ args.pad_idx = Example.word_vocab[PAD]
 args.num_tags = Example.label_vocab.num_tags
 args.tag_pad_idx = Example.label_vocab.convert_tag_to_idx(PAD)
 
-model_para_path = 'model111.bin'
+model_para_path = 'model_baseline.bin'
 test_set_path = 'data/test_unlabelled.json'
 
 test_dataset = Example.load_dataset(test_set_path)
@@ -43,7 +44,7 @@ test_dataset = Example.load_dataset(test_set_path)
 #     print('test_dataset.ex:', test_dataset[i].ex)
 #     print('test_dataset.pred:', test_dataset[i].pred)
 
-model = Seq2Seq(args).to(device)
+model = SLUTagging(args).to(device)
 model.load_state_dict(torch.load(model_para_path)['model'])
 Example.word2vec.load_embeddings(model.word_embed, Example.word_vocab, device=device)
 
@@ -89,7 +90,7 @@ out_list.append(utt_list)
 
 # print('out_list:', out_list)
 
-with open('test.json', 'w', encoding='utf-8') as f:
+with open('test_baseline.json', 'w', encoding='utf-8') as f:
     json.dump(out_list, f, ensure_ascii=False, indent=4)
 
 print("test done!\n")
